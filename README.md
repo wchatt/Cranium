@@ -6,12 +6,14 @@ Built on [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and Slack
 
 ## What It Does
 
-- **Slack chat** — DM your bot. It uses Claude Code under the hood, so it can read files, run commands, search the web, and use MCP tools. Thread replies maintain conversation context.
-- **Persistent memory** — Writes notes to `memory/` files that survive across sessions. It learns your preferences and builds on past work.
-- **Skills** — Markdown files in `skills/` that teach the agent how to do specific things (write reports, run audits, manage reminders). Add your own.
-- **Scheduled jobs** — Cron-driven scripts in `jobs/` that run Claude on a schedule: morning digests, security audits, memory cleanup.
-- **Voice calls** — Say "call me" in Slack and get a browser-based voice link with real-time TTS (Kokoro) and speech recognition.
-- **Personality** — `CLAUDE.md` defines how the agent thinks, communicates, and makes decisions. It's meant to be customized.
+Cranium turns Claude into a persistent agent that lives in your Slack workspace — not a chatbot that answers questions, but a coworker that does actual work.
+
+- **Real work, not just chat** — DM your bot and it uses Claude Code under the hood: reading files, running commands, searching the web, calling MCP tools. But "chat" undersells it. In practice, people use this to manage spreadsheets, generate documents, run e-commerce operations, research markets, and automate multi-step workflows — all from a Slack thread.
+- **Memory that compounds** — The agent writes notes to `memory/` files that persist across sessions. It learns your preferences, remembers what worked and what didn't, and gets better at *your* specific workflows over time. Day 30 is meaningfully better than day 1.
+- **Skills as workflows** — Markdown files in `skills/` aren't prompt templates — they're full operational playbooks. A skill can define a multi-step process the agent executes end-to-end: research → generate artifacts → upload to Drive → update tracking sheet. Add your own.
+- **Scheduled autonomy** — Cron-driven scripts in `jobs/` run Claude on a schedule. Morning digests, nightly cleanups, automated audits — the agent works while you sleep.
+- **Voice calls** — Say "call me" and get a browser-based voice link with real-time TTS and speech recognition. Not voice commands — actual back-and-forth conversation. Walk the dog and brainstorm with your agent.
+- **Personality with teeth** — `CLAUDE.md` doesn't just set a tone — it defines how the agent makes decisions, what it can do autonomously, and when it should push back. It's meant to be customized.
 
 ## Requirements
 
