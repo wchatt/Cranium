@@ -1,0 +1,34 @@
+# Secrets — NEVER commit these
+.env
+mcp-config.json
+sa-key.json
+*.key
+*.pem
+
+# Runtime state
+sessions.json
+cron.log
+voice/.voice-tokens.json
+
+# Dependencies
+node_modules/
+
+# Reports (generated output)
+reports/
+
+# Backup files
+*.bak
+
+# TLS certs
+voice/certs/
+
+# Python cache
+__pycache__/
+
+# Large model files (download separately)
+voice/models/
+*.onnx
+*.bin
+
+# Archive (post-migration)
+archive/

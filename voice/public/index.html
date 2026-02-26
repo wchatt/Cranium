@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Claude Voice</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0a0a0f;
+    color: #e0e0e0;
+    height: 100vh;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    min-height: 0;
+  }
+
+  .orb-container {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    margin-bottom: 24px;
+    flex-shrink: 0;
+  }
+  .orb {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    transition: background 0.5s, box-shadow 0.5s;
+  }
+  .orb.listening {
+    background: radial-gradient(circle, #2a6fff 0%, #1a3a8a 70%);
+    box-shadow: 0 0 40px rgba(42, 111, 255, 0.4);
+    animation: pulse 2.5s ease-in-out infinite;
+  }
+  .orb.thinking {
+    background: radial-gradient(circle, #ff9f2a 0%, #8a5a1a 70%);
+    box-shadow: 0 0 40px rgba(255, 159, 42, 0.4);
+    animation: think 1s ease-in-out infinite;
+  }
+  .orb.speaking {
+    background: radial-gradient(circle, #2aff6f 0%, #1a8a3a 70%);
+    box-shadow: 0 0 40px rgba(42, 255, 111, 0.4);
+    animation: speak 0.6s ease-in-out infinite;
+  }
+  .orb.muted {
+    background: radial-gradient(circle, #444 0%, #222 70%);
+    box-shadow: 0 0 20px rgba(100, 100, 100, 0.2);
+    animation: none;
+  }
+  .orb.error {
+    background: radial-gradient(circle, #ff2a2a 0%, #8a1a1a 70%);
+    box-shadow: 0 0 40px rgba(255, 42, 42, 0.4);
+    animation: none;
+  }
+  .orb.ready {
+    background: radial-gradient(circle, #888 0%, #333 70%);
+    box-shadow: 0 0 20px rgba(100, 100, 100, 0.2);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  .orb.connecting {
+    background: radial-gradient(circle, #555 0%, #222 70%);
+    box-shadow: none;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.06); opacity: 0.85; }
+  }
+  @keyframes think {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+  }
+  @keyframes speak {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.04); }
+  }
+
+  .status-text {
+    font-size: 18px;
+    font-weight: 500;
+    margin-bottom: 12px;
+    min-height: 24px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .debug-text {
+    font-size: 11px;
+    color: #666;
+    text-align: center;
+    min-height: 16px;
+    margin-bottom: 16px;
+    flex-shrink: 0;
+  }
+
+  .interim {
+    color: #888;
+    font-style: italic;
+    text-align: center;
+    font-size: 14px;
+    min-height: 20px;
+    margin-bottom: 10px;
+    flex-shrink: 0;
+  }
+
+  .buttons {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-shrink: 0;
+    margin-bottom: 16px;
+  }
+
+  .mute-btn {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid #555;
+    background: transparent;
+    color: #e0e0e0;
+    font-size: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mute-btn:active { transform: scale(0.95); }
+  .mute-btn.muted {
+    border-color: #ff4444;
+    background: rgba(255, 68, 68, 0.15);
+    color: #ff4444;
+  }
+
+  .end-call-btn {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 3px solid #ff4444;
+    background: rgba(255, 68, 68, 0.15);
+    color: #ff4444;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .end-call-btn:active { transform: scale(0.95); background: rgba(255, 68, 68, 0.3); }
+
+  /* Start button - shown before mic is active */
+  .start-btn {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    border: 3px solid #2a6fff;
+    background: rgba(42, 111, 255, 0.15);
+    color: #e0e0e0;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .start-btn:active { transform: scale(0.95); background: rgba(42, 111, 255, 0.3); }
+
+  .transcript-area {
+    flex: 0 1 auto;
+    max-height: 35vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    padding: 10px 20px;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .transcript-entry {
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    border-radius: 10px;
+  }
+  .transcript-entry.user {
+    background: rgba(42, 111, 255, 0.15);
+    border-left: 3px solid #2a6fff;
+  }
+  .transcript-entry.claude {
+    background: rgba(42, 255, 111, 0.1);
+    border-left: 3px solid #2aff6f;
+  }
+  .transcript-entry.system {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 3px solid #888;
+  }
+  .transcript-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 3px;
+    opacity: 0.6;
+  }
+</style>
+</head>
+<body>
+
+<!-- Pre-start screen -->
+<div class="main" id="startScreen">
+  <button class="start-btn" id="startBtn">Tap to Start</button>
+  <div class="debug-text" id="startDebug"></div>
+</div>
+
+<!-- Active call screen (hidden until mic is granted) -->
+<div class="main" id="callScreen" style="display:none;">
+  <div class="orb-container">
+    <div class="orb connecting" id="orb"></div>
+  </div>
+  <div class="status-text" id="status">Connecting...</div>
+  <div class="debug-text" id="debug"></div>
+  <div class="interim" id="interim"></div>
+  <div class="buttons">
+    <button class="mute-btn" id="muteBtn" title="Mute">🎙️</button>
+    <button class="end-call-btn" id="endCallBtn" title="End Call">📞</button>
+  </div>
+  <div class="transcript-area" id="transcript"></div>
+</div>
+
+<script>
+// --- Detect in-app browsers ---
+(function() {
+  const ua = navigator.userAgent || '';
+  if (/Slack|FBAN|FBAV|Instagram|Twitter|Line\//i.test(ua)) {
+    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;padding:40px;text-align:center;font-size:18px;color:#e0e0e0;background:#0a0a0f;">' +
+      '<div><p style="margin-bottom:20px;">Voice mode needs Chrome or Safari.</p>' +
+      '<p style="font-size:14px;color:#888;">Tap the \u22ee menu and choose <b>Open in browser</b>.</p></div></div>';
+    return;
+  }
+})();
+
+// --- State ---
+let ws = null;
+let recognition = null;
+let isMuted = false;
+let isProcessing = false;
+let wakeLock = null;
+let audioQueue = [];
+let isPlaying = false;
+let micStream = null; // Hold the mic stream so browser keeps permission
+let speechBuffer = ''; // Accumulates final results until "over" is spoken
+let overTimeout = null; // Timer for "over" confirmation pause
+let callEnded = false; // Set when user ends the call — prevents reconnect
+let greetingTimeout = null; // Fallback: start mic if greeting doesn't arrive
+
+const orb = document.getElementById('orb');
+const statusEl = document.getElementById('status');
+const debugEl = document.getElementById('debug');
+const interimEl = document.getElementById('interim');
+const muteBtn = document.getElementById('muteBtn');
+const endCallBtn = document.getElementById('endCallBtn');
+const transcriptEl = document.getElementById('transcript');
+const startScreen = document.getElementById('startScreen');
+const callScreen = document.getElementById('callScreen');
+const startBtn = document.getElementById('startBtn');
+const startDebug = document.getElementById('startDebug');
+
+// --- URL params ---
+const urlParams = new URLSearchParams(window.location.search);
+const sessionParam = urlParams.get('session') || '';
+const channelParam = urlParams.get('channel') || '';
+const threadParam = urlParams.get('thread') || '';
+
+// --- Check browser support ---
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+if (!SpeechRecognition) {
+  startDebug.textContent = 'Speech recognition not supported. Use Chrome on Android or Safari on iOS.';
+  startBtn.style.display = 'none';
+}
+
+// --- Audio context for bypassing autoplay policy ---
+// Creating an AudioContext on user gesture keeps audio permission alive for the session
+let audioCtx = null;
+
+// --- Audio Cues (synthesized via AudioContext) ---
+function playTone(freq, duration, type, volume) {
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type || 'sine';
+  osc.frequency.value = freq;
+  gain.gain.value = volume || 0.15;
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + duration);
+}
+
+// "Over" confirmed — quick ascending blip using pad chord tones
+function playOverCue() {
+  if (!audioCtx) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const now = audioCtx.currentTime;
+  // Two quick notes from the pad's chord — ascending
+  playTone(165, 0.12, 'sine', 0.18); // E3
+  setTimeout(() => playTone(196, 0.14, 'sine', 0.18), 100); // G3
+}
+
+// Thinking — warm ambient pad + pentatonic melody + percussive heartbeat
+// Combines: base pad (C major chord, filters, LFOs) + wandering melody + double-thump heartbeat
+let thinkingNodes = null;
+let thinkingStopped = false;
+let thinkingTimers = [];
+
+function thinkingTimeout(fn, ms) {
+  const id = setTimeout(fn, ms);
+  thinkingTimers.push(id);
+  return id;
+}
+
+function playThinkingCue() {
+  if (!audioCtx) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  stopThinkingCue();
+  thinkingStopped = false;
+
+  const now = audioCtx.currentTime;
+  const nodes = [];
+
+  // === BASE PAD ===
+  const master = audioCtx.createGain();
+  master.gain.value = 0;
+  master.gain.linearRampToValueAtTime(0.05, now + 1.5);
+
+  const lpFilter = audioCtx.createBiquadFilter();
+  lpFilter.type = 'lowpass'; lpFilter.frequency.value = 420; lpFilter.Q.value = 0.5;
+
+  const hpFilter = audioCtx.createBiquadFilter();
+  hpFilter.type = 'highpass'; hpFilter.frequency.value = 150; hpFilter.Q.value = 0.5;
+
+  // Breathing LFO
+  const lfo = audioCtx.createOscillator();
+  const lfoGain = audioCtx.createGain();
+  lfo.type = 'sine'; lfo.frequency.value = 0.15; lfoGain.gain.value = 0.012;
+  lfo.connect(lfoGain); lfoGain.connect(master.gain); lfo.start(); nodes.push(lfo);
+
+  // Filter sweep LFO
+  const filterLfo = audioCtx.createOscillator();
+  const filterLfoGain = audioCtx.createGain();
+  filterLfo.type = 'sine'; filterLfo.frequency.value = 0.08; filterLfoGain.gain.value = 80;
+  filterLfo.connect(filterLfoGain); filterLfoGain.connect(lpFilter.frequency); filterLfo.start(); nodes.push(filterLfo);
+
+  // C major chord — C3/E3/G3
+  [131, 165, 196].forEach((freq, i) => {
+    const osc = audioCtx.createOscillator();
+    osc.type = 'sine'; osc.frequency.value = freq; osc.detune.value = [-4, 0, 3][i];
+    osc.connect(hpFilter); osc.start(); nodes.push(osc);
+  });
+
+  hpFilter.connect(lpFilter); lpFilter.connect(master); master.connect(audioCtx.destination);
+
+  // === PENTATONIC MELODY (from Variant B) ===
+  const pentatonic = [196, 220, 262, 294, 330]; // G3, A3, C4, D4, E4
+  let melodyOsc = null, melodyGain = null, melodyIdx = 0;
+
+  function nextNote() {
+    if (thinkingStopped) return;
+    const t = audioCtx.currentTime;
+    if (melodyGain) {
+      melodyGain.gain.cancelScheduledValues(t);
+      melodyGain.gain.setValueAtTime(melodyGain.gain.value, t);
+      melodyGain.gain.linearRampToValueAtTime(0, t + 1.0);
+      const old = melodyOsc;
+      setTimeout(() => { try { old.stop(); } catch(e) {} }, 1200);
+    }
+    melodyIdx = (melodyIdx + 1 + Math.floor(Math.random() * 2)) % pentatonic.length;
+    melodyOsc = audioCtx.createOscillator();
+    melodyGain = audioCtx.createGain();
+    melodyOsc.type = 'triangle';
+    melodyOsc.frequency.value = pentatonic[melodyIdx];
+    melodyGain.gain.value = 0;
+    melodyGain.gain.linearRampToValueAtTime(0.06, t + 0.8);
+    melodyGain.gain.linearRampToValueAtTime(0.04, t + 3.0);
+
+    const noteFilter = audioCtx.createBiquadFilter();
+    noteFilter.type = 'lowpass'; noteFilter.frequency.value = 500; noteFilter.Q.value = 0.3;
+
+    melodyOsc.connect(noteFilter);
+    noteFilter.connect(melodyGain);
+    melodyGain.connect(audioCtx.destination);
+    melodyOsc.start(); nodes.push(melodyOsc);
+    thinkingTimeout(nextNote, 3500 + Math.random() * 2500);
+  }
+  thinkingTimeout(nextNote, 1000);
+
+  // === PERCUSSIVE HEARTBEAT (from Variant C) — double-thump at ~72 BPM ===
+  function playBeat() {
+    if (thinkingStopped) return;
+    const t = audioCtx.currentTime;
+
+    // First thump — pitch-drop sine
+    const beatOsc = audioCtx.createOscillator();
+    const beatGain = audioCtx.createGain();
+    const beatFilter = audioCtx.createBiquadFilter();
+    beatOsc.type = 'sine';
+    beatOsc.frequency.value = 200;
+    beatOsc.frequency.exponentialRampToValueAtTime(60, t + 0.08);
+    beatFilter.type = 'lowpass'; beatFilter.frequency.value = 300;
+    beatGain.gain.value = 0.08;
+    beatGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    beatOsc.connect(beatFilter); beatFilter.connect(beatGain); beatGain.connect(audioCtx.destination);
+    beatOsc.start(t); beatOsc.stop(t + 0.2); nodes.push(beatOsc);
+
+    // Second thump (slightly softer) — 200ms later
+    thinkingTimeout(() => {
+      if (thinkingStopped) return;
+      const t2 = audioCtx.currentTime;
+      const beatOsc2 = audioCtx.createOscillator();
+      const beatGain2 = audioCtx.createGain();
+      const beatFilter2 = audioCtx.createBiquadFilter();
+      beatOsc2.type = 'sine';
+      beatOsc2.frequency.value = 180;
+      beatOsc2.frequency.exponentialRampToValueAtTime(50, t2 + 0.06);
+      beatFilter2.type = 'lowpass'; beatFilter2.frequency.value = 250;
+      beatGain2.gain.value = 0.05;
+      beatGain2.gain.exponentialRampToValueAtTime(0.001, t2 + 0.12);
+      beatOsc2.connect(beatFilter2); beatFilter2.connect(beatGain2); beatGain2.connect(audioCtx.destination);
+      beatOsc2.start(t2); beatOsc2.stop(t2 + 0.15); nodes.push(beatOsc2);
+    }, 200);
+
+    // Next heartbeat in ~830ms (72 BPM)
+    thinkingTimeout(playBeat, 830);
+  }
+  thinkingTimeout(playBeat, 500);
+
+  thinkingNodes = { nodes, master };
+}
+
+function stopThinkingCue() {
+  thinkingStopped = true;
+  thinkingTimers.forEach(id => clearTimeout(id));
+  thinkingTimers = [];
+  if (thinkingNodes) {
+    const now = audioCtx.currentTime;
+    try {
+      thinkingNodes.master.gain.cancelScheduledValues(now);
+      thinkingNodes.master.gain.setValueAtTime(thinkingNodes.master.gain.value, now);
+      thinkingNodes.master.gain.linearRampToValueAtTime(0, now + 0.5);
+    } catch (e) {}
+    const nodesToStop = thinkingNodes.nodes;
+    setTimeout(() => {
+      nodesToStop.forEach(n => { try { n.stop(); } catch(e) {} });
+    }, 550);
+    thinkingNodes = null;
+  }
+}
+
+// Done speaking — quick descending blip using pad chord tones
+function playDoneCue() {
+  if (!audioCtx) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  // Two quick notes — descending (mirror of the over cue)
+  playTone(196, 0.12, 'sine', 0.15); // G3
+  setTimeout(() => playTone(131, 0.15, 'sine', 0.15), 100); // C3
+}
+
+// --- Start button: request mic, prime audio, then switch to call screen ---
+startBtn.addEventListener('click', async () => {
+  startBtn.textContent = 'Requesting mic...';
+  try {
+    // 1. Prime audio context (must happen in user gesture)
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Play a silent buffer to "unlock" audio playback for this session
+    const silentBuffer = audioCtx.createBuffer(1, 1, 22050);
+    const source = audioCtx.createBufferSource();
+    source.buffer = silentBuffer;
+    source.connect(audioCtx.destination);
+    source.start();
+
+    // 2. Request mic permission
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    // Switch to call screen
+    startScreen.style.display = 'none';
+    callScreen.style.display = 'flex';
+
+    // Connect WebSocket and start recognition
+    connectWS();
+  } catch (e) {
+    startBtn.textContent = 'Mic denied - tap to retry';
+    startDebug.textContent = e.message || 'Could not access microphone';
+  }
+});
+
+// --- Wake Lock ---
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => {
+        document.addEventListener('visibilitychange', async () => {
+          if (document.visibilityState === 'visible' && !isMuted) {
+            try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+          }
+        }, { once: true });
+      });
+    }
+  } catch (e) {}
+}
+
+// --- WebSocket ---
+function connectWS() {
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsParams = new URLSearchParams();
+  if (sessionParam) wsParams.set('session', sessionParam);
+  if (channelParam) wsParams.set('channel', channelParam);
+  if (threadParam) wsParams.set('thread', threadParam);
+  const wsUrl = `${proto}//${window.location.host}/?${wsParams.toString()}`;
+
+  debugEl.textContent = `WS connecting: ${wsUrl.substring(0, 60)}...`;
+  ws = new WebSocket(wsUrl);
+  ws.binaryType = 'blob';
+
+  ws.onopen = () => {
+    if (isProcessing) {
+      // Reconnected while waiting for a response — maintain thinking state
+      setStatus('thinking');
+      playThinkingCue();
+      debugEl.textContent = 'Reconnected (still processing)';
+    } else {
+      // Wait for Claude's greeting before starting mic
+      setStatus('connecting');
+      statusEl.textContent = 'Connecting...';
+      debugEl.textContent = 'Waiting for Claude...';
+      // Start recognition after a short delay in case greeting doesn't arrive
+      greetingTimeout = setTimeout(() => {
+        if (!isProcessing && !isPlaying) {
+          setStatus('listening');
+          startRecognition();
+        }
+      }, 8000);
+    }
+    requestWakeLock();
+  };
+
+  ws.onmessage = (event) => {
+    // Binary = audio
+    if (event.data instanceof Blob) {
+      if (greetingTimeout) { clearTimeout(greetingTimeout); greetingTimeout = null; }
+      debugEl.textContent = `Audio received: ${(event.data.size / 1024).toFixed(1)}KB`;
+      playAudio(event.data);
+      return;
+    }
+    if (event.data instanceof ArrayBuffer) {
+      playAudio(new Blob([event.data], { type: 'audio/mpeg' }));
+      return;
+    }
+
+    let msg;
+    try {
+      msg = JSON.parse(event.data);
+    } catch (e) {
+      debugEl.textContent = 'Parse error on message';
+      return;
+    }
+
+    if (msg.type === 'status') {
+      debugEl.textContent = `Status: ${msg.status}`;
+      if (msg.status === 'thinking') {
+        setStatus('thinking');
+        playThinkingCue();
+      } else if (msg.status === 'speaking') {
+        // TTS generating, audio blob coming next
+      } else if (msg.status === 'error') {
+        setStatus('error');
+        stopThinkingCue();
+        statusEl.textContent = msg.message || 'Error';
+        setTimeout(() => {
+          isProcessing = false;
+          if (!isMuted) {
+            setStatus('listening');
+            startRecognition();
+          }
+        }, 3000);
+      }
+    }
+
+    // Live activity feed — shows what Claude is doing (tool use, reading files, etc.)
+    if (msg.type === 'activity') {
+      debugEl.textContent = msg.text || '';
+    }
+
+    if (msg.type === 'response_text') {
+      addTranscript('claude', msg.text);
+    }
+
+    // Server signals all TTS audio for this response has been sent
+    if (msg.type === 'response_done') {
+      isProcessing = false;
+      if (!isPlaying && audioQueue.length === 0) {
+        // All audio already played — transition to listening now
+        debugEl.textContent = 'Response complete, resuming mic';
+        playDoneCue();
+        if (isMuted) {
+          setStatus('muted');
+        } else {
+          setStatus('listening');
+          startRecognition();
+        }
+      }
+      // If still playing, playNext() will handle the transition when queue drains
+    }
+
+    if (msg.type === 'wrapup_posted') {
+      addTranscript('system', 'Summary posted to Slack.');
+    }
+
+    // Call ended — Claude is going off to execute
+    if (msg.type === 'call_ended') {
+      callEnded = true;
+      stopThinkingCue();
+      stopRecognition();
+      isProcessing = false;
+      orb.className = 'orb ready';
+      statusEl.textContent = 'Executing — check Slack';
+      debugEl.textContent = 'Call complete. Action items handed off.';
+      addTranscript('system', 'Call ended. Claude is executing the plan. Check Slack for updates.');
+    }
+  };
+
+  ws.onclose = (event) => {
+    // Intentional close — Claude is executing action items
+    if (event.code === 4100 || callEnded) {
+      stopRecognition();
+      stopThinkingCue();
+      return; // Don't reconnect
+    }
+
+    debugEl.textContent = 'Disconnected, reconnecting...';
+    if (!isProcessing) {
+      setStatus('connecting');
+    }
+    stopRecognition();
+    setTimeout(connectWS, 2000);
+  };
+
+  ws.onerror = (err) => {
+    debugEl.textContent = `WebSocket error (readyState: ${ws.readyState})`;
+    console.error('WS error:', err);
+  };
+}
+
+// --- Audio Playback ---
+function playAudio(blob) {
+  audioQueue.push(blob);
+  if (!isPlaying) playNext();
+}
+
+function playNext() {
+  if (audioQueue.length === 0) {
+    isPlaying = false;
+    // Don't transition to listening yet — more audio chunks may be coming
+    // (sentence-level streaming). Only transition when we get 'response_done'.
+    if (!isProcessing) {
+      // response_done already received and queue is empty — we're truly done
+      debugEl.textContent = 'Audio done, resuming mic';
+      playDoneCue();
+      if (isMuted) {
+        setStatus('muted');
+      } else {
+        setStatus('listening');
+        startRecognition();
+      }
+    } else {
+      debugEl.textContent = 'Waiting for next audio chunk...';
+    }
+    return;
+  }
+
+  isPlaying = true;
+  setStatus('speaking');
+  stopThinkingCue();
+  // Don't stop recognition here — it was already stopped when we sent the message
+  // (stopRecognition is called in sendText)
+
+  const blob = audioQueue.shift();
+  debugEl.textContent = `Playing audio (${(blob.size / 1024).toFixed(1)}KB)`;
+
+  // Use AudioContext decodeAudioData for reliable mobile playback
+  if (audioCtx) {
+    blob.arrayBuffer().then(buffer => {
+      return audioCtx.decodeAudioData(buffer);
+    }).then(audioBuffer => {
+      const source = audioCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioCtx.destination);
+      source.onended = () => playNext();
+      source.start();
+    }).catch(e => {
+      debugEl.textContent = `AudioCtx decode error: ${e.message}`;
+      // Fallback to HTML5 Audio
+      playWithHtmlAudio(blob);
+    });
+  } else {
+    playWithHtmlAudio(blob);
+  }
+}
+
+function playWithHtmlAudio(blob) {
+  // Detect WAV vs MP3 from first bytes for correct MIME type
+  const typedBlob = (blob.type && blob.type !== 'application/octet-stream') ? blob
+    : new Blob([blob], { type: 'audio/wav' }); // Kokoro sends WAV, fallback sends MP3 — both decode fine
+  const url = URL.createObjectURL(typedBlob);
+  const audio = new Audio(url);
+
+  audio.onended = () => {
+    URL.revokeObjectURL(url);
+    playNext();
+  };
+
+  audio.onerror = (e) => {
+    debugEl.textContent = `Audio error: ${e.type || 'unknown'}`;
+    URL.revokeObjectURL(url);
+    playNext();
+  };
+
+  audio.play().catch((e) => {
+    debugEl.textContent = `Autoplay blocked: ${e.message}`;
+    statusEl.textContent = 'Tap to hear response';
+    const resumePlay = () => {
+      audio.play().catch(() => {
+        URL.revokeObjectURL(url);
+        playNext();
+      });
+    };
+    document.addEventListener('click', resumePlay, { once: true });
+    document.addEventListener('touchstart', resumePlay, { once: true });
+  });
+}
+
+// --- Speech Recognition ---
+function startRecognition() {
+  if (isMuted || isProcessing) return;
+  if (recognition) return;
+  if (!SpeechRecognition) return;
+
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  recognition.onstart = () => {
+    debugEl.textContent = 'Mic active';
+  };
+
+  recognition.onresult = (event) => {
+    let interim = '';
+    let newFinal = '';
+
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const t = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        newFinal += t;
+      } else {
+        interim += t;
+      }
+    }
+
+    if (newFinal) {
+      speechBuffer += (speechBuffer ? ' ' : '') + newFinal.trim();
+    }
+
+    // Show accumulated text + current interim
+    const display = (speechBuffer + (interim ? ' ' + interim : '')).trim();
+    interimEl.textContent = display || '';
+
+    // Check if buffer ends with "over" (word boundary, case-insensitive)
+    if (/\bover[.!?]?\s*$/i.test(speechBuffer)) {
+      // Wait 0.5s of no new speech to confirm they meant to send
+      clearTimeout(overTimeout);
+      overTimeout = setTimeout(() => {
+        if (speechBuffer && /\bover[.!?]?\s*$/i.test(speechBuffer)) {
+          // Strip "over" from the end and send
+          const toSend = speechBuffer.replace(/\s*\bover[.!?]?\s*$/i, '').trim();
+          speechBuffer = '';
+          interimEl.textContent = '';
+          if (toSend) {
+            playOverCue();
+            sendText(toSend);
+          }
+        }
+      }, 500);
+    } else {
+      clearTimeout(overTimeout);
+    }
+  };
+
+  recognition.onerror = (event) => {
+    debugEl.textContent = `Mic error: ${event.error}`;
+    if (event.error === 'not-allowed') {
+      statusEl.textContent = 'Mic blocked. Check browser settings.';
+      setStatus('error');
+      recognition = null;
+      return;
+    }
+    recognition = null;
+    if (!isMuted && !isProcessing) {
+      setTimeout(startRecognition, 1000);
+    }
+  };
+
+  recognition.onend = () => {
+    recognition = null;
+    if (!isMuted && !isProcessing) {
+      setTimeout(startRecognition, 200);
+    }
+  };
+
+  try {
+    recognition.start();
+  } catch (e) {
+    debugEl.textContent = `Mic start failed: ${e.message}`;
+    recognition = null;
+    setTimeout(startRecognition, 500);
+  }
+}
+
+function stopRecognition() {
+  if (recognition) {
+    try { recognition.abort(); } catch (e) {}
+    recognition = null;
+  }
+  interimEl.textContent = '';
+  speechBuffer = '';
+  clearTimeout(overTimeout);
+}
+
+// --- Send text to server ---
+function sendText(text) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  if (isProcessing) return;
+
+  isProcessing = true;
+  speechBuffer = '';
+  clearTimeout(overTimeout);
+  stopRecognition();
+  addTranscript('user', text);
+  ws.send(JSON.stringify({ type: 'transcript', text }));
+}
+
+// --- UI Helpers ---
+function setStatus(state) {
+  orb.className = 'orb ' + state;
+  const labels = {
+    connecting: 'Connecting...',
+    listening: 'Listening — say "over" when done',
+    thinking: 'Thinking...',
+    speaking: 'Speaking',
+    muted: 'Muted',
+    error: 'Error',
+  };
+  if (labels[state]) statusEl.textContent = labels[state];
+}
+
+function addTranscript(role, text) {
+  const entry = document.createElement('div');
+  entry.className = `transcript-entry ${role}`;
+  const label = document.createElement('div');
+  label.className = 'transcript-label';
+  label.textContent = role === 'user' ? 'You' : role === 'system' ? 'System' : 'Claude';
+  const content = document.createElement('div');
+  content.textContent = text;
+  entry.appendChild(label);
+  entry.appendChild(content);
+  transcriptEl.appendChild(entry);
+  transcriptEl.scrollTop = transcriptEl.scrollHeight;
+}
+
+// --- Mute Button ---
+// Mute only controls the mic. It does NOT affect processing/playback state.
+// If Claude is thinking or speaking, that continues regardless of mute.
+muteBtn.addEventListener('click', () => {
+  isMuted = !isMuted;
+  muteBtn.classList.toggle('muted', isMuted);
+  muteBtn.textContent = isMuted ? '🔇' : '🎙️';
+
+  if (isMuted) {
+    stopRecognition();
+    // Only show muted status if nothing else is happening
+    if (!isProcessing && !isPlaying) setStatus('muted');
+  } else {
+    // When unmuting, respect current processing state
+    if (isProcessing) {
+      // Still waiting for response — keep showing thinking/speaking
+      // Don't restart recognition, don't change status
+    } else if (isPlaying) {
+      // Audio is playing — let it finish, recognition will restart after
+    } else {
+      setStatus('listening');
+      startRecognition();
+    }
+  }
+});
+
+// --- End Call Button ---
+endCallBtn.addEventListener('click', () => {
+  callEnded = true;
+  stopThinkingCue();
+  stopRecognition();
+  // Close WebSocket — server disconnect handler will generate summary + action items
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.close(1000, 'User ended call');
+  }
+  orb.className = 'orb ready';
+  statusEl.textContent = 'Call ended — check Slack';
+  debugEl.textContent = 'Summary and action items posting to Slack...';
+  addTranscript('system', 'Call ended. Summary and action items will appear in your Slack thread.');
+  endCallBtn.disabled = true;
+  endCallBtn.style.opacity = '0.3';
+});
+</script>
+</body>
+</html>

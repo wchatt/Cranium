@@ -1,0 +1,16 @@
+{
+  "name": "cranium",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@slack/bolt": "^4.1.0",
+    "kokoro-js": "^1.2.1"
+  },
+  "description": "Turn Claude into a persistent AI agent that lives in Slack",
+  "main": "cranium.js",
+  "scripts": {
+    "start": "node cranium.js"
+  },
+  "keywords": ["claude", "slack", "ai-agent"],
+  "license": "MIT"
+}
