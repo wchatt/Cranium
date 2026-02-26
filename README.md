@@ -130,3 +130,7 @@ Drop an `mcp-config.json` in the repo root and it's auto-detected. Standard [Cla
 4. The response streams back to Slack as a thread reply
 5. Thread replies use `--resume` to maintain conversation context within a thread
 6. The agent reads `CLAUDE.md` and `memory/` files at the start of each session for continuity
+
+## Contact
+
+Questions, feedback, or want to share what you built? Reach out at **craniumproject4@gmail.com** or open a [Discussion](https://github.com/wchatt/Cranium/discussions) on GitHub.
