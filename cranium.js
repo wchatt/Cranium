@@ -1,4 +1,5 @@
 // cranium.js — Slack ↔ Claude Code bridge
+import "dotenv/config";
 import bolt from "@slack/bolt";
 const { App } = bolt;
 import { spawn } from "child_process";
@@ -28,6 +29,7 @@ const CLAUDE_ENV = {
   PATH: process.env.PATH || "/usr/local/bin:/usr/bin:/bin",
   LANG: "en_US.UTF-8",
 };
+delete CLAUDE_ENV.CLAUDECODE;
 
 // ── Boot Tracking (for post-restart context injection) ──────────────────────
 const BOOT_TIME = Date.now();

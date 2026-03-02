@@ -17,8 +17,8 @@ Cranium turns Claude into a persistent agent that lives in your Slack workspace 
 
 ## Requirements
 
-- **Node.js 18+**
-- **Claude Code CLI** — `npm install -g @anthropic-ai/claude-code` then run `claude` to authenticate
+- **Node.js 18+** — `curl -fsSL https://deb.nodesource.com/setup_20.x | sudo bash - && sudo apt install nodejs -y`
+- **Claude Code CLI** — `npm install -g @anthropic-ai/claude-code`
 - A **Slack workspace** where you can create apps
 - **Python 3** (optional, for cron job Slack notifications)
 
@@ -37,10 +37,16 @@ After creating:
 ```bash
 git clone https://github.com/wchatt/Cranium.git
 cd Cranium
+
+# Authenticate Claude Code (device code flow — works on headless servers)
+claude setup-token
+
 bash setup.sh
 ```
 
 The setup script checks prerequisites, prompts for your Slack tokens, installs dependencies, and optionally creates a systemd service.
+
+**Important:** After running `claude setup-token`, copy the `CLAUDE_CODE_OAUTH_TOKEN` value into your `.env` file so it persists across sessions and systemd restarts. See `.env.example` for details.
 
 Or do it manually:
 
@@ -73,7 +79,7 @@ Everything is in `.env`:
 |---|---|---|
 | `SLACK_BOT_TOKEN` | Yes | Bot token from your Slack app |
 | `SLACK_APP_TOKEN` | Yes | App-level token with `connections:write` |
-| `CLAUDE_MODEL` | No | Model for interactive messages (default: `sonnet`) |
+| `CLAUDE_MODEL` | No | Model for interactive messages (default: `opus`) |
 | `ANTHROPIC_API_KEY` | No | API key for cron jobs (keeps them off your Max subscription quota) |
 | `SLACK_DM_CHANNEL` | No | Channel ID for cron notifications |
 | `VOICE_PORT` | No | Voice server port (default: `3100`) |

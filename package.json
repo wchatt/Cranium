@@ -4,6 +4,7 @@
   "type": "module",
   "dependencies": {
     "@slack/bolt": "^4.1.0",
+    "dotenv": "^16.4.0",
     "kokoro-js": "^1.2.1"
   },
   "description": "Turn Claude into a persistent AI agent that lives in Slack",
